@@ -23,14 +23,18 @@ public class ServiceProvider extends Thread {
             while (loginFlag) {
                 String userCommand = (String) in.readObject();
                 if(userCommand.equalsIgnoreCase("logout")){
-                    Server.currentUserArray.remove(Server.currentUserArray.indexOf(id));
-                    out.writeObject("logout successful");
-                    socket.close();
+                    logout();
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    private void logout() throws IOException {
+        Server.currentUserArray.remove(Server.currentUserArray.indexOf(id));
+        out.writeObject("logout successful");
+        socket.close();
     }
 
     private boolean login() throws IOException, ClassNotFoundException {
