@@ -1,3 +1,4 @@
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -44,7 +45,8 @@ public class ServiceProvider extends Thread {
         //if anew user tries to establish a connection add that user to currentUserArray and userArray
 
         out.writeObject("login ID :");
-        Integer userId = Integer.parseInt((String) in.readObject());
+        String sUserId = (String) in.readObject();
+        Integer userId = Integer.parseInt(sUserId);
         if (Server.currentUserArray.contains(userId)) {
             out.writeObject("login denied, "+userId + " active");
             socket.close();
@@ -59,6 +61,9 @@ public class ServiceProvider extends Thread {
             //add create new folder functionality
             Server.currentUserArray.add(userId);
             id=userId;
+            new File("src\\files\\"+sUserId).mkdir();
+            new File("src\\files\\"+sUserId+"\\public").mkdir();
+            new File("src\\files\\"+sUserId+"\\private").mkdir();
             Server.userArray.add(userId);
             return true;
         }
