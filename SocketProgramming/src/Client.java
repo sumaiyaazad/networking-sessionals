@@ -20,7 +20,7 @@ public class Client {
         while(true) {
             String serverMessage = (String) in.readObject();
             System.out.println(serverMessage);
-            if(serverMessage.contains("denied")){
+            if(serverMessage.contains("denied") || serverMessage.contains("logout")){
                 break;
             }
             String userCommand = s.nextLine();

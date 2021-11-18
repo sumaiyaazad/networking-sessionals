@@ -8,6 +8,7 @@ public class ServiceProvider extends Thread {
     Socket socket;
     ObjectOutputStream out;
     ObjectInputStream in;
+    Integer id;
 
 
     public ServiceProvider(Socket clientSocket) throws IOException {
@@ -20,7 +21,12 @@ public class ServiceProvider extends Thread {
         try {
             boolean loginFlag = login();
             while (loginFlag) {
-                System.out.println((String) in.readObject());
+                String userCommand = (String) in.readObject();
+                if(userCommand.equalsIgnoreCase("logout")){
+                    Server.currentUserArray.remove(Server.currentUserArray.indexOf(id));
+                    out.writeObject("logout successful");
+                    socket.close();
+                }
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -33,19 +39,22 @@ public class ServiceProvider extends Thread {
         //if inactive user tries to establish a connection, then add that user to currentUserArray
         //if anew user tries to establish a connection add that user to currentUserArray and userArray
 
-        out.writeObject("Login ID :");
+        out.writeObject("login ID :");
         Integer userId = Integer.parseInt((String) in.readObject());
         if (Server.currentUserArray.contains(userId)) {
-            out.writeObject("Login denied, "+userId + " active");
+            out.writeObject("login denied, "+userId + " active");
             socket.close();
             return false;
         } else if (Server.userArray.contains(userId)) {
-            out.writeObject("Welcome again "+userId);
+            out.writeObject("welcome again "+userId);
             Server.currentUserArray.add(userId);
+            id=userId;
             return true;
         } else {
-            out.writeObject("Welcome "+userId);
+            out.writeObject("welcome "+userId);
+            //add create new folder functionality
             Server.currentUserArray.add(userId);
+            id=userId;
             Server.userArray.add(userId);
             return true;
         }
