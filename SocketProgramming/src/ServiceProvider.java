@@ -10,32 +10,45 @@ public class ServiceProvider extends Thread {
     ObjectInputStream in;
 
 
-    public ServiceProvider(Socket socket) throws IOException {
-        this.socket = socket;
-        this.out = new ObjectOutputStream(this.socket.getOutputStream());
-        this.in = new ObjectInputStream(this.socket.getInputStream());
+    public ServiceProvider(Socket clientSocket) throws IOException {
+        socket = clientSocket;
+        out = new ObjectOutputStream(this.socket.getOutputStream());
+        in = new ObjectInputStream(this.socket.getInputStream());
     }
 
-    public void run()
-    {
+    public void run() {
         try {
-//            boolean loginFlag = login();
-            out.writeObject("Login ID :");
-            System.out.println((String) in.readObject());
-
-//            while (true)
-//            {
-//                Thread.sleep(1000);
-//                Date date = new Date();
-//                out.writeObject(date.toString());
-//            }
+            boolean loginFlag = login();
+            while (loginFlag) {
+                System.out.println((String) in.readObject());
+            }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
 
-//    private boolean login() throws IOException, ClassNotFoundException {
-//
-//        return true;
-//    }
+    private boolean login() throws IOException, ClassNotFoundException {
+
+        //reads user id and checks whether a current user is trying to establish a connection
+        //if inactive user tries to establish a connection, then add that user to currentUserArray
+        //if anew user tries to establish a connection add that user to currentUserArray and userArray
+
+        out.writeObject("Login ID :");
+        Integer userId = Integer.parseInt((String) in.readObject());
+        if (Server.currentUserArray.contains(userId)) {
+            out.writeObject("Login denied, "+userId + " active");
+            socket.close();
+            return false;
+        } else if (Server.userArray.contains(userId)) {
+            out.writeObject("Welcome again "+userId);
+            Server.currentUserArray.add(userId);
+            return true;
+        } else {
+            out.writeObject("Welcome "+userId);
+            Server.currentUserArray.add(userId);
+            Server.userArray.add(userId);
+            return true;
+        }
+
+    }
 }
