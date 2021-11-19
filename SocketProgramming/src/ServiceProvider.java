@@ -27,6 +27,8 @@ public class ServiceProvider extends Thread {
                     logout();
                 }else if(userCommand.equalsIgnoreCase("lookup-student-list")){
                     lookupStudentList();
+                }else if(userCommand.equalsIgnoreCase("lookup-own-files")){
+                    lookupOwnFiles();
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -34,11 +36,25 @@ public class ServiceProvider extends Thread {
         }
     }
 
+    private void lookupOwnFiles() throws IOException {
+        String studentList = "student list : \n";
+        for(int i=0;i<Server.userArray.size();i++){
+            if(Server.userArray.get(i) != id){
+                studentList += Server.userArray.get(i)+"\n";
+            }
+        }
+        out.writeObject(studentList);
+    }
+
     private void lookupStudentList() throws IOException {
         String studentList = "student list : \n";
         for(int i=0;i<Server.userArray.size();i++){
-            if(Server.userArray.get(i)!=id){
-                studentList +=Server.userArray.get(i)+"\n";
+            if(Server.userArray.get(i) != id){
+                if(Server.currentUserArray.contains(Server.userArray.get(i))){
+                    studentList += Server.userArray.get(i)+" --> online \n";
+                }else{
+                    studentList += Server.userArray.get(i)+"\n";
+                }
             }
         }
         out.writeObject(studentList);
