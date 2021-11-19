@@ -39,41 +39,56 @@ public class ServiceProvider extends Thread {
     }
 
     private void lookupOtherFiles() throws IOException {
-        String otherPublicList = "other public file list : \n";
-//        for (int i = 0; i < Server.userArray.size(); i++) {
-//            if (Server.userArray.get(i).equals(id)) {
-//                studentList += id + "\n";
-//            }
-//            if (Server.currentUserArray.contains(Server.userArray.get(i))) {
-//                studentList += Server.userArray.get(i) + " --> online \n";
-//            } else {
-//                studentList += Server.userArray.get(i) + " --> offline \n";
-//            }
-//        }
-//        out.writeObject(studentList);
+        String otherPublicList ;
+        if(Server.userArray.size()==0){
+            otherPublicList = "none uploaded public file \n";
+        }else{
+            otherPublicList = "other public file list : \n";
+        }
+        for (int i = 0; i < Server.userArray.size(); i++) {
+            if (Server.userArray.get(i).equals(id)) {
+                continue;
+            }
+
+            File folder = new File("src\\files\\" + Server.userArray.get(i) + "\\public");
+            String[] listOfPublicFiles = folder.list();
+            if(listOfPublicFiles.length!=0){
+                otherPublicList += Server.userArray.get(i)+" public file list : \n";
+            }
+            for (int j = 0; j < listOfPublicFiles.length; j++) {
+                otherPublicList += listOfPublicFiles[j] + "\n";
+            }
+        }
+        out.writeObject(otherPublicList);
     }
 
     private void lookupOwnFiles() throws IOException {
-        String fileList = "own file list : \n";
+        String fileList;
         File publicFolder = new File("src\\files\\" + id + "\\public");
         File privateFolder = new File("src\\files\\" + id + "\\private");
         String[] listOfPublicFiles = publicFolder.list();
         String[] listOfPrivateFiles = privateFolder.list();
+        if(listOfPrivateFiles.length==0 && listOfPublicFiles.length==0){
+            fileList = "you haven't uploaded any file\n";
+        }else{
+            fileList = "own file list : \n";
+        }
 
         for (int i = 0; i < listOfPublicFiles.length; i++) {
             fileList += listOfPublicFiles[i] + " --> public \n";
         }
         for (int i = 0; i < listOfPrivateFiles.length; i++) {
-            fileList += listOfPublicFiles[i] + " --> private \n";
+            fileList += listOfPrivateFiles[i] + " --> private \n";
         }
         out.writeObject(fileList);
     }
 
     private void lookupStudentList() throws IOException {
         String studentList = "student list : \n";
+        studentList += id + "\n";
         for (int i = 0; i < Server.userArray.size(); i++) {
-            if (Server.userArray.get(i).equals(id)) {
-                studentList += id + "\n";
+            if (Server.userArray.get(i) == id) {
+                continue;
             }
             if (Server.currentUserArray.contains(Server.userArray.get(i))) {
                 studentList += Server.userArray.get(i) + " --> online \n";
@@ -112,11 +127,11 @@ public class ServiceProvider extends Thread {
             out.writeObject("welcome " + userId);
             //add create new folder functionality
             Server.currentUserArray.add(userId);
+            Server.userArray.add(userId);
             id = userId;
             new File("src\\files\\" + sUserId).mkdir();
             new File("src\\files\\" + sUserId + "\\public").mkdir();
             new File("src\\files\\" + sUserId + "\\private").mkdir();
-            Server.userArray.add(id);
             return true;
         }
 
