@@ -10,8 +10,6 @@ public class Server extends Thread{
     public static ArrayList<Integer> userArray= new ArrayList<>();
     public static ArrayList<Integer> currentUserArray= new ArrayList<>();
     public static void main(String[] args) throws IOException, ClassNotFoundException {
-//        Files.createDirectories(Paths.get("\\files\\taaha"));
-        System.out.println("directory creation successful");
         ServerSocket welcomeSocket = new ServerSocket(6666);
         while(true) {
             System.out.println("Waiting for connection...");

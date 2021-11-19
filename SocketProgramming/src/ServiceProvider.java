@@ -25,11 +25,23 @@ public class ServiceProvider extends Thread {
                 String userCommand = (String) in.readObject();
                 if(userCommand.equalsIgnoreCase("logout")){
                     logout();
+                }else if(userCommand.equalsIgnoreCase("lookup-student-list")){
+                    lookupStudentList();
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    private void lookupStudentList() throws IOException {
+        String studentList = "student list : \n";
+        for(int i=0;i<Server.userArray.size();i++){
+            if(Server.userArray.get(i)!=id){
+                studentList +=Server.userArray.get(i)+"\n";
+            }
+        }
+        out.writeObject(studentList);
     }
 
     private void logout() throws IOException {
@@ -64,7 +76,7 @@ public class ServiceProvider extends Thread {
             new File("src\\files\\"+sUserId).mkdir();
             new File("src\\files\\"+sUserId+"\\public").mkdir();
             new File("src\\files\\"+sUserId+"\\private").mkdir();
-            Server.userArray.add(userId);
+            Server.userArray.add(id);
             return true;
         }
 
