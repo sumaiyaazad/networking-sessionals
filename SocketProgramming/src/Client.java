@@ -7,7 +7,7 @@ public class Client {
     private static ObjectOutputStream out;
     private static ObjectInputStream in;
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException {
+    public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
         socket = new Socket("localhost", 6666);
         out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(socket.getInputStream());
@@ -34,26 +34,33 @@ public class Client {
         }
     }
 
-    private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize) throws IOException, ClassNotFoundException {
+    private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize) throws IOException, ClassNotFoundException, InterruptedException {
         FileInputStream fin = new FileInputStream(new File("src\\"+fileName));
         byte[] bytes = new byte[(int) selectedChunkSize];
         System.out.println("fileName : "+fileName+" fileSize : "+fileSize+" selectedChunkSize : "+selectedChunkSize);
         int count;
         String confirmationMessage;
+        boolean error=false;
         while((count=fin.read(bytes))>0){
             socket.getOutputStream().write(bytes);
             System.out.println("sent a chunk of size : "+count);
             confirmationMessage = (String) in.readObject();
             System.out.println("server message : "+confirmationMessage);
             if(!confirmationMessage.contains("successful")){
-                out.writeObject("unsuccessful");
+
+                error = true;
                 break;
             }
         }
         fin.close();
-        out.writeObject("transmission complete");
-        confirmationMessage = (String) in.readObject();
-        System.out.println("server message : "+confirmationMessage);
+        if(error){
+            System.out.println("server did not send confirmation");
+            out.writeObject("unsuccessful");
+        }else{
+            out.writeObject("transmission complete");
+            confirmationMessage = (String) in.readObject();
+            System.out.println("server message : "+confirmationMessage);
+        }
     }
 
 }

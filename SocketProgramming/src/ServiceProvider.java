@@ -6,7 +6,7 @@ public class ServiceProvider extends Thread {
     Socket socket;
     ObjectOutputStream out;
     ObjectInputStream in;
-    Integer id;
+    Integer id=0;
 
 
     public ServiceProvider(Socket clientSocket) throws IOException {
@@ -61,16 +61,20 @@ public class ServiceProvider extends Thread {
             out.writeObject("successfully received chunk no : "+count);
             socket.getInputStream().read(bytes);
             fos.write(bytes);
-            System.out.println("wrote chunk no :"+count+" to file");
+            System.out.println("wrote chunk no : "+count+" to file");
         }
         fos.close();
         String completionMessage = (String) in.readObject();
         System.out.println("client message : "+completionMessage);
         if(!completionMessage.contains("complete") || count != numberOfChunk){
             // delete that file from server
+            File file = new File(fileId);
+            file.delete();
+            System.out.println("transmission failure, file deleted");
             out.writeObject("transmission cancelled");
+        }else{
+            out.writeObject("transmission completed successfully");
         }
-        out.writeObject("transmission completed successfully");
         Server.currentBufferSize -= fileSize;
     }
 
