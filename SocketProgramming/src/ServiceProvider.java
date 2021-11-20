@@ -1,7 +1,4 @@
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.Date;
 
@@ -14,7 +11,7 @@ public class ServiceProvider extends Thread {
 
     public ServiceProvider(Socket clientSocket) throws IOException {
         socket = clientSocket;
-        out = new ObjectOutputStream(this.socket.getOutputStream());
+        out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(this.socket.getInputStream());
     }
 
@@ -31,11 +28,50 @@ public class ServiceProvider extends Thread {
                     lookupOwnFiles();
                 } else if (userCommand.equalsIgnoreCase("lookup-other-files")) {
                     lookupOtherFiles();
+                }else if (userCommand.contains("upload")) {
+                    int fileSize = Integer.parseInt(userCommand.split("-")[3]);
+                    if(Server.currentBufferSize+fileSize>Server.bufferSize){
+                        out.writeObject("maximum buffer size overflow");
+                        continue;
+                    }
+                    Server.currentBufferSize += fileSize;
+                    String fileType = userCommand.split("-")[1];
+                    String fileName = userCommand.split("-")[2];
+                    String fileId = "src\\files\\"+id+"\\"+fileType+"\\"+fileName;
+                    int selectedChunkSize=100;
+//                    int selectedChunkSize = ThreadLocalRandom.current().nextInt(Server.minSize, Server.maxSize + 1);
+                    out.writeObject("parameter-"+fileName+"-"+fileSize+"-"+selectedChunkSize);
+                    uploadFile(fileId, fileSize, selectedChunkSize);
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
+    }
+
+    private void uploadFile(String fileId, int fileSize, int selectedChunkSize) throws IOException, ClassNotFoundException {
+        FileOutputStream fos = new FileOutputStream(fileId);
+        byte[] bytes = new byte[(int) selectedChunkSize];
+        int numberOfChunk = (fileSize%selectedChunkSize == 0)? (fileSize/selectedChunkSize) : (fileSize/selectedChunkSize+1);
+        System.out.println("fileId : "+fileId+" fileSize : "+fileSize+" selectedChunkSize : "+selectedChunkSize+" noOfChunk : "+numberOfChunk);
+        int count=0;
+        while(count<numberOfChunk){
+            count+=1;
+            System.out.println("received chunk no : "+count);
+            out.writeObject("successfully received chunk no : "+count);
+            socket.getInputStream().read(bytes);
+            fos.write(bytes);
+            System.out.println("wrote chunk no :"+count+" to file");
+        }
+        fos.close();
+        String completionMessage = (String) in.readObject();
+        System.out.println("client message : "+completionMessage);
+        if(!completionMessage.contains("complete") || count != numberOfChunk){
+            // delete that file from server
+            out.writeObject("transmission cancelled");
+        }
+        out.writeObject("transmission completed successfully");
+        Server.currentBufferSize -= fileSize;
     }
 
     private void lookupOtherFiles() throws IOException {
