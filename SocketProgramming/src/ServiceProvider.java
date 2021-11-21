@@ -1,13 +1,15 @@
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Date;
 
 public class ServiceProvider extends Thread {
     Socket socket;
     ObjectOutputStream out;
     ObjectInputStream in;
-    Integer id=0;
-
+    public Integer id=0;
+    Integer requestId = 0;
+    ArrayList<String> messageArray = new ArrayList<String>();
 
     public ServiceProvider(Socket clientSocket) throws IOException {
         socket = clientSocket;
@@ -50,10 +52,17 @@ public class ServiceProvider extends Thread {
                     if(!file.exists() || file.isDirectory()) {
                         out.writeObject("requested file does not exist");
                     }else{
+                        Server.currentBufferSize += file.length();
                         out.writeObject("download-"+id+"-"+fileName+"-"+file.length());
                         downloadFile(studentId, fileName, file);
                     }
-
+                }else if(userCommand.contains("request")){
+                    String description = userCommand.split("-")[1];
+                    out.writeObject("stored your request");
+                    handleRequestForFile(description);
+                }else if(userCommand.contains("view-message")){
+                    out.writeObject("view-message request processing ....");
+                    viewMessage();
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -61,8 +70,32 @@ public class ServiceProvider extends Thread {
         }
     }
 
-    private void downloadFile(String studentId, String fileName, File file) throws IOException {
+    private void viewMessage() throws IOException {
+        String sendObject;
+        if(messageArray.size()==0){
+            sendObject = "You have no new message \n";
+        }else{
+            sendObject = "Your unread messages : \n";
+        }
+        for(int i=0;i<messageArray.size();i++){
+            sendObject += messageArray.get(i)+"\n";
+        }
+        messageArray = new ArrayList<String>();
+        out.writeObject(sendObject);
+    }
 
+    private void handleRequestForFile(String description) {
+        requestId += 1;
+        String rId = id.toString() + "-" +requestId.toString();
+        for(int i=0; i<Server.threadArrayList.size(); i++){
+            if(!Server.currentUserArray.contains(Server.threadArrayList.get(i).id)){
+                continue;
+            }
+            Server.threadArrayList.get(i).messageArray.add("requested file id : "+rId+" description : " +description);
+        }
+    }
+
+    private void downloadFile(String studentId, String fileName, File file) throws IOException {
         out.writeObject("download will start in few seconds...");
         FileInputStream fin = new FileInputStream(file);
         byte[] bytes = new byte[(int) Server.bufferSize];

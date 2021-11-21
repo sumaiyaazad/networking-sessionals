@@ -29,16 +29,22 @@ public class Client {
                 Integer fileSize = Integer.parseInt(serverMessage.split("-")[2]);
                 Integer selectedChunkSize = Integer.parseInt(serverMessage.split("-")[3]);
                 uploadfile(fileName, fileSize, selectedChunkSize);
-            }
-            else if(serverMessage.contains("download")){
+            } else if(serverMessage.contains("download")){
                 String myId = serverMessage.split("-")[1];
                 String fileName = serverMessage.split("-")[2];
                 Integer fileSize= Integer.parseInt(serverMessage.split("-")[3]);
                 downloadFile(myId, fileName, fileSize);
+            } else if(serverMessage.contains("view-message")){
+                viewMessage();
             }
             String userCommand = s.nextLine();
             out.writeObject(userCommand);
         }
+    }
+
+    private static void viewMessage() throws IOException, ClassNotFoundException {
+        String unreadMessage = (String) in.readObject();
+        System.out.println("server message : "+unreadMessage);
     }
 
     private static void downloadFile(String myId, String fileName, Integer fileSize) throws IOException, ClassNotFoundException {
@@ -77,7 +83,6 @@ public class Client {
             confirmationMessage = (String) in.readObject();
             System.out.println("server message : "+confirmationMessage);
             if(!confirmationMessage.contains("successful")){
-
                 error = true;
                 break;
             }
