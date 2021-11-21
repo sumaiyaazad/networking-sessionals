@@ -30,20 +30,26 @@ public class ServiceProvider extends Thread {
                     lookupOwnFiles();
                 } else if (userCommand.equalsIgnoreCase("lookup-other-files")) {
                     lookupOtherFiles();
-                }else if (userCommand.contains("upload")) {
-                    int fileSize = Integer.parseInt(userCommand.split("-")[3]);
+                }else if (userCommand.contains("upload") || userCommand.contains("response")) {
+                    String command = userCommand.split("-")[0];
+                    int fileSize = Integer.parseInt(userCommand.split("-")[2]);
                     if(Server.currentBufferSize+fileSize>Server.bufferSize){
                         out.writeObject("maximum buffer size overflow");
                         continue;
                     }
                     Server.currentBufferSize += fileSize;
-                    String fileType = userCommand.split("-")[1];
-                    String fileName = userCommand.split("-")[2];
+                    String fileName = userCommand.split("-")[1];
+                    //last arg for upload request is public or private and for response is request id
+                    String lastArg = userCommand.split("-")[3];
+                    String fileType = command.equals("response") ? "public" : lastArg;
                     String fileId = "src\\files\\"+id+"\\"+fileType+"\\"+fileName;
                     int selectedChunkSize=100;
 //                    int selectedChunkSize = ThreadLocalRandom.current().nextInt(Server.minSize, Server.maxSize + 1);
                     out.writeObject("parameter-"+fileName+"-"+fileSize+"-"+selectedChunkSize);
                     uploadFile(fileId, fileSize, selectedChunkSize);
+                    if(command.equals("response")){
+                        notifyRequestSender(lastArg, fileName);
+                    }
                 }else if(userCommand.contains("download")){
                     String studentId = userCommand.split("-")[1];
                     String fileName = userCommand.split("-")[2];
@@ -59,7 +65,7 @@ public class ServiceProvider extends Thread {
                 }else if(userCommand.contains("request")){
                     String description = userCommand.split("-")[1];
                     out.writeObject("stored your request");
-                    handleRequestForFile(description);
+                    notifyAll(description);
                 }else if(userCommand.contains("view-message")){
                     out.writeObject("view-message request processing ....");
                     viewMessage();
@@ -67,6 +73,15 @@ public class ServiceProvider extends Thread {
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void notifyRequestSender(String lastArg, String fileName) {
+        String requestedUser = lastArg.split(":")[0];
+        for(int i=0; i<Server.threadArrayList.size();i++){
+            if(Server.threadArrayList.get(i).id.equals(Integer.parseInt(requestedUser))){
+                Server.threadArrayList.get(i).messageArray.add(id+" uploaded file : "+fileName+" in response to your file request no : "+lastArg);
+            }
         }
     }
 
@@ -84,11 +99,11 @@ public class ServiceProvider extends Thread {
         out.writeObject(sendObject);
     }
 
-    private void handleRequestForFile(String description) {
+    private void notifyAll(String description) {
         requestId += 1;
-        String rId = id.toString() + "-" +requestId.toString();
+        String rId = id.toString() + ":" +requestId.toString();
         for(int i=0; i<Server.threadArrayList.size(); i++){
-            if(!Server.currentUserArray.contains(Server.threadArrayList.get(i).id)){
+            if(!Server.currentUserArray.contains(Server.threadArrayList.get(i).id) || Server.threadArrayList.get(i).id.equals(id)){
                 continue;
             }
             Server.threadArrayList.get(i).messageArray.add("requested file id : "+rId+" description : " +description);
