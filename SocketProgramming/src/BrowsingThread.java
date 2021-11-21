@@ -3,23 +3,26 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class ServiceProvider extends Thread {
-    Socket socket;
-    ObjectOutputStream out;
-    ObjectInputStream in;
+public class BrowsingThread extends Thread {
+    private Socket socket;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
     public Integer id=0;
-    Integer requestId = 0;
-    ArrayList<String> messageArray = new ArrayList<String>();
+    private Integer requestId = 0;
+    public ArrayList<String> messageArray = new ArrayList<String>();
+    private UploadThread upload;
+    private DownloadThread download;
 
-    public ServiceProvider(Socket clientSocket) throws IOException {
+    public BrowsingThread(Socket clientSocket) throws IOException {
         socket = clientSocket;
         out = new ObjectOutputStream(socket.getOutputStream());
-        in = new ObjectInputStream(this.socket.getInputStream());
+        in = new ObjectInputStream(socket.getInputStream());
     }
 
     public void run() {
         try {
             boolean loginFlag = login();
+
             while (loginFlag) {
                 String userCommand = (String) in.readObject();
                 if (userCommand.equalsIgnoreCase("logout")) {
@@ -30,39 +33,46 @@ public class ServiceProvider extends Thread {
                     lookupOwnFiles();
                 } else if (userCommand.equalsIgnoreCase("lookup-other-files")) {
                     lookupOtherFiles();
-                }else if (userCommand.contains("upload") || userCommand.contains("response")) {
-                    String command = userCommand.split("-")[0];
-                    int fileSize = Integer.parseInt(userCommand.split("-")[2]);
-                    if(Server.currentBufferSize+fileSize>Server.bufferSize){
-                        out.writeObject("maximum buffer size overflow");
-                        continue;
-                    }
-                    Server.currentBufferSize += fileSize;
-                    String fileName = userCommand.split("-")[1];
-                    //last arg for upload request is public or private and for response is request id
-                    String lastArg = userCommand.split("-")[3];
-                    String fileType = command.equals("response") ? "public" : lastArg;
-                    String fileId = "src\\files\\"+id+"\\"+fileType+"\\"+fileName;
-                    int selectedChunkSize=100;
+                }
+                else if (userCommand.contains("upload") || userCommand.contains("response")) {
+                    upload = new UploadThread(socket, id, userCommand);
+                    upload.start();
+//                    String command = userCommand.split("-")[0];
+//                    int fileSize = Integer.parseInt(userCommand.split("-")[2]);
+//                    if(Server.currentBufferSize+fileSize>Server.bufferSize){
+//                        out.writeObject("maximum buffer size overflow");
+//                        continue;
+//                    }
+//                    Server.currentBufferSize += fileSize;
+//                    String fileName = userCommand.split("-")[1];
+//                    //last arg for upload request is public or private and for response is request id
+//                    String lastArg = userCommand.split("-")[3];
+//                    String fileType = command.equals("response") ? "public" : lastArg;
+//                    String fileId = "src\\files\\"+id+"\\"+fileType+"\\"+fileName;
+//                    int selectedChunkSize=100;
 //                    int selectedChunkSize = ThreadLocalRandom.current().nextInt(Server.minSize, Server.maxSize + 1);
-                    out.writeObject("parameter-"+fileName+"-"+fileSize+"-"+selectedChunkSize);
-                    uploadFile(fileId, fileSize, selectedChunkSize);
-                    if(command.equals("response")){
-                        notifyRequestSender(lastArg, fileName);
-                    }
-                }else if(userCommand.contains("download")){
-                    String studentId = userCommand.split("-")[1];
-                    String fileName = userCommand.split("-")[2];
-                    String fileId = "src\\files\\"+studentId+"\\public\\"+fileName;
-                    File file = new File(fileId);
-                    if(!file.exists() || file.isDirectory()) {
-                        out.writeObject("requested file does not exist");
-                    }else{
-                        Server.currentBufferSize += file.length();
-                        out.writeObject("download-"+id+"-"+fileName+"-"+file.length());
-                        downloadFile(studentId, fileName, file);
-                    }
-                }else if(userCommand.contains("request")){
+//                    out.writeObject("parameter-"+fileName+"-"+fileSize+"-"+selectedChunkSize);
+//                    uploadFile(fileId, fileSize, selectedChunkSize);
+//                    if(command.equals("response")){
+//                        notifyRequestSender(lastArg, fileName);
+//                    }
+                }
+                else if(userCommand.contains("download")){
+                    download  = new DownloadThread(socket, id, userCommand);
+                    download.start();
+//                    String studentId = userCommand.split("-")[1];
+//                    String fileName = userCommand.split("-")[2];
+//                    String fileId = "src\\files\\"+studentId+"\\public\\"+fileName;
+//                    File file = new File(fileId);
+//                    if(!file.exists() || file.isDirectory()) {
+//                        out.writeObject("requested file does not exist");
+//                    }else{
+//                        Server.currentBufferSize += file.length();
+//                        out.writeObject("download-"+id+"-"+fileName+"-"+file.length());
+//                        downloadFile(file);
+//                    }
+                }
+                else if(userCommand.contains("request")){
                     String description = userCommand.split("-")[1];
                     out.writeObject("stored your request");
                     notifyAll(description);
@@ -110,7 +120,7 @@ public class ServiceProvider extends Thread {
         }
     }
 
-    private void downloadFile(String studentId, String fileName, File file) throws IOException {
+    private void downloadFile(File file) throws IOException {
         out.writeObject("download will start in few seconds...");
         FileInputStream fin = new FileInputStream(file);
         byte[] bytes = new byte[(int) Server.bufferSize];

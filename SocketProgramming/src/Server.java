@@ -10,17 +10,19 @@ public class Server {
     public static int currentBufferSize = 0;
     public static int minSize = 100;
     public static int maxSize = 400;
-    public static ArrayList<ServiceProvider> threadArrayList=new ArrayList<>();
+    public static ArrayList<BrowsingThread> threadArrayList=new ArrayList<>();
+    private static Socket socket;
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket serverSocket = new ServerSocket(6666);
         while(true) {
             System.out.println("Waiting for connection...");
-            Socket socket = serverSocket.accept();
+            socket = serverSocket.accept();
             System.out.println("Connection established");
-            ServiceProvider serviceProvider = new ServiceProvider(socket);
-            threadArrayList.add(serviceProvider);
-            serviceProvider.start();
+            BrowsingThread browsing = new BrowsingThread(socket);
+            threadArrayList.add(browsing);
+            browsing.start();
         }
 
     }
+
 }
