@@ -42,12 +42,37 @@ public class ServiceProvider extends Thread {
 //                    int selectedChunkSize = ThreadLocalRandom.current().nextInt(Server.minSize, Server.maxSize + 1);
                     out.writeObject("parameter-"+fileName+"-"+fileSize+"-"+selectedChunkSize);
                     uploadFile(fileId, fileSize, selectedChunkSize);
+                }else if(userCommand.contains("download")){
+                    String studentId = userCommand.split("-")[1];
+                    String fileName = userCommand.split("-")[2];
+                    String fileId = "src\\files\\"+studentId+"\\public\\"+fileName;
+                    File file = new File(fileId);
+                    if(!file.exists() || file.isDirectory()) {
+                        out.writeObject("requested file does not exist");
+                    }else{
+                        out.writeObject("download-"+id+"-"+fileName+"-"+file.length());
+                        downloadFile(studentId, fileName, file);
+                    }
+
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
         }
     }
+
+    private void downloadFile(String studentId, String fileName, File file) throws IOException {
+
+        out.writeObject("download will start in few seconds...");
+        FileInputStream fin = new FileInputStream(file);
+        byte[] bytes = new byte[(int) Server.bufferSize];
+        while(fin.read(bytes)>0) {
+            socket.getOutputStream().write(bytes);
+        }
+        out.writeObject("file sent successfully");
+        fin.close();
+    }
+
 
     private void uploadFile(String fileId, int fileSize, int selectedChunkSize) throws IOException, ClassNotFoundException {
         FileOutputStream fos = new FileOutputStream(fileId);

@@ -6,12 +6,13 @@ public class Client {
     private static Socket socket;
     private static ObjectOutputStream out;
     private static ObjectInputStream in;
+    private static Scanner s = new Scanner(System.in);
 
     public static void main(String[] args) throws IOException, ClassNotFoundException, InterruptedException {
         socket = new Socket("localhost", 6666);
         out = new ObjectOutputStream(socket.getOutputStream());
         in = new ObjectInputStream(socket.getInputStream());
-        Scanner s = new Scanner(System.in);
+
         System.out.println("Connection established");
         System.out.println("Remote port: " + socket.getPort());
         System.out.println("Local port: " + socket.getLocalPort());
@@ -29,9 +30,38 @@ public class Client {
                 Integer selectedChunkSize = Integer.parseInt(serverMessage.split("-")[3]);
                 uploadfile(fileName, fileSize, selectedChunkSize);
             }
+            else if(serverMessage.contains("download")){
+                String myId = serverMessage.split("-")[1];
+                String fileName = serverMessage.split("-")[2];
+                Integer fileSize= Integer.parseInt(serverMessage.split("-")[3]);
+                downloadFile(myId, fileName, fileSize);
+            }
             String userCommand = s.nextLine();
             out.writeObject(userCommand);
         }
+    }
+
+    private static void downloadFile(String myId, String fileName, Integer fileSize) throws IOException, ClassNotFoundException {
+        String serverMessage = (String) in.readObject();
+        System.out.println("server message : "+serverMessage);
+        if(serverMessage.contains("exist")){
+            System.out.println("file download failure, try again later");
+            return;
+        }
+        byte[] bytes = new byte[(int) Server.bufferSize];
+//        System.out.println("do you want to download the folder in public or private directory?");
+//        String type = s.nextLine();
+        FileOutputStream fos = new FileOutputStream("src\\files\\"+myId+"\\public\\"+fileName);
+        int numOfChunk = fileSize%Server.bufferSize == 0 ? (fileSize/Server.bufferSize) : (fileSize/Server.bufferSize+1);
+        int count=0;
+        while(count<numOfChunk){
+            count+=1;
+            socket.getInputStream().read(bytes);
+            fos.write(bytes);
+        }
+        serverMessage = (String) in.readObject();
+        System.out.println("server message : "+serverMessage);
+        fos.close();
     }
 
     private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize) throws IOException, ClassNotFoundException, InterruptedException {
