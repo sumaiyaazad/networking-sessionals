@@ -71,7 +71,7 @@ public class ServiceProvider extends Thread {
                     viewMessage();
                 }
             }
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -122,7 +122,7 @@ public class ServiceProvider extends Thread {
     }
 
 
-    private void uploadFile(String fileId, int fileSize, int selectedChunkSize) throws IOException, ClassNotFoundException {
+    private void uploadFile(String fileId, int fileSize, int selectedChunkSize) throws IOException, ClassNotFoundException, InterruptedException {
         FileOutputStream fos = new FileOutputStream(fileId);
         byte[] bytes = new byte[(int) selectedChunkSize];
         int numberOfChunk = (fileSize%selectedChunkSize == 0)? (fileSize/selectedChunkSize) : (fileSize/selectedChunkSize+1);
@@ -131,14 +131,19 @@ public class ServiceProvider extends Thread {
         while(count<numberOfChunk){
             count+=1;
             System.out.println("received chunk no : "+count);
+//            simulation timeout
+//            Thread.sleep(31000);
+//            break;
             out.writeObject("successfully received chunk no : "+count);
             socket.getInputStream().read(bytes);
             fos.write(bytes);
             System.out.println("wrote chunk no : "+count+" to file");
         }
-        fos.close();
         String completionMessage = (String) in.readObject();
         System.out.println("client message : "+completionMessage);
+        fos.close();
+//        simulation file delete
+//        count=0;
         if(!completionMessage.contains("complete") || count != numberOfChunk){
             // delete that file from server
             File file = new File(fileId);
@@ -149,6 +154,7 @@ public class ServiceProvider extends Thread {
             out.writeObject("transmission completed successfully");
         }
         Server.currentBufferSize -= fileSize;
+
     }
 
     private void lookupOtherFiles() throws IOException {
