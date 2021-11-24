@@ -18,23 +18,24 @@ public class Client {
         System.out.println("Local port: " + socket.getLocalPort());
         System.out.println("Remote IP: " + socket.getInetAddress());
         System.out.println("Local IP: " + socket.getLocalAddress());
-        
-        while(true) {
+
+        while (true) {
             String serverMessage = (String) in.readObject();
-            System.out.println("server message : "+serverMessage);
-            if(serverMessage.contains("denied") || serverMessage.contains("logout")){
+            System.out.println("server message : " + serverMessage);
+            if (serverMessage.contains("denied") || serverMessage.contains("logout")) {
                 break;
-            }else if(serverMessage.contains("parameter")){
+            } else if (serverMessage.contains("parameter")) {
                 String fileName = serverMessage.split("-")[1];
                 Integer fileSize = Integer.parseInt(serverMessage.split("-")[2]);
                 Integer selectedChunkSize = Integer.parseInt(serverMessage.split("-")[3]);
-                uploadfile(fileName, fileSize, selectedChunkSize);
-            } else if(serverMessage.contains("download")){
+                Integer id = Integer.parseInt(serverMessage.split("-")[4]);
+                uploadfile(fileName, fileSize, selectedChunkSize, id);
+            } else if (serverMessage.contains("download")) {
                 String myId = serverMessage.split("-")[1];
                 String fileName = serverMessage.split("-")[2];
-                Integer fileSize= Integer.parseInt(serverMessage.split("-")[3]);
+                Integer fileSize = Integer.parseInt(serverMessage.split("-")[3]);
                 downloadFile(myId, fileName, fileSize);
-            } else if(serverMessage.contains("view-message")){
+            } else if (serverMessage.contains("view-message")) {
                 viewMessage();
             }
             String userCommand = s.nextLine();
@@ -44,59 +45,62 @@ public class Client {
 
     private static void viewMessage() throws IOException, ClassNotFoundException {
         String unreadMessage = (String) in.readObject();
-        System.out.println("server message : "+unreadMessage);
+        System.out.println("server message : " + unreadMessage);
     }
 
     private static void downloadFile(String myId, String fileName, Integer fileSize) throws IOException, ClassNotFoundException {
         String serverMessage = (String) in.readObject();
-        System.out.println("server message : "+serverMessage);
-        if(serverMessage.contains("exist")){
+        System.out.println("server message : " + serverMessage);
+        if (serverMessage.contains("exist")) {
             System.out.println("file download failure, try again later");
             return;
         }
         byte[] bytes = new byte[(int) Server.bufferSize];
 //        System.out.println("do you want to download the folder in public or private directory?");
 //        String type = s.nextLine();
-        FileOutputStream fos = new FileOutputStream("src\\files\\"+myId+"\\public\\"+fileName);
-        int numOfChunk = fileSize%Server.bufferSize == 0 ? (fileSize/Server.bufferSize) : (fileSize/Server.bufferSize+1);
-        int count=0;
-        while(count<numOfChunk){
-            count+=1;
+        FileOutputStream fos = new FileOutputStream("src\\files\\" + myId + "\\public\\" + fileName);
+        int numOfChunk = fileSize % Server.bufferSize == 0 ? (fileSize / Server.bufferSize) : (fileSize / Server.bufferSize + 1);
+        int count = 0;
+        while (count < numOfChunk) {
+            count += 1;
             socket.getInputStream().read(bytes);
             fos.write(bytes);
         }
         serverMessage = (String) in.readObject();
-        System.out.println("server message : "+serverMessage);
+        System.out.println("server message : " + serverMessage);
         fos.close();
     }
 
-    private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize) throws IOException, ClassNotFoundException {
-                FileInputStream fin = new FileInputStream(new File("src\\" + fileName));
-                byte[] bytes = new byte[(int) selectedChunkSize];
-                System.out.println("fileName : " + fileName + " fileSize : " + fileSize + " selectedChunkSize : " + selectedChunkSize);
-                int count;
-                String confirmationMessage = "";
-                boolean error = false;
-                while ((count = fin.read(bytes)) > 0) {
-                    socket.getOutputStream().write(bytes);
-                    System.out.println("sent a chunk of size : " + count);
-                    socket.setSoTimeout(30000);
-                    confirmationMessage = (String) in.readObject();
-                    System.out.println("server message : " + confirmationMessage);
-                if (!confirmationMessage.contains("successful")) {
-                    error = true;
-                    break;
-                }
-                }
-                fin.close();
-            if (error) {
-                System.out.println("server did not send confirmation");
-                out.writeObject("unsuccessful");
-            } else {
-                out.writeObject("transmission complete");
-                confirmationMessage = (String) in.readObject();
-                System.out.println("server message : " + confirmationMessage);
+    private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize, Integer id) throws IOException, ClassNotFoundException {
+        Socket uploadClient = new Socket("localhost", 8000 + id);
+        ObjectOutputStream outUpload = new ObjectOutputStream(uploadClient.getOutputStream());
+        ObjectInputStream inUpload = new ObjectInputStream(uploadClient.getInputStream());
+        FileInputStream fin = new FileInputStream(new File("src\\" + fileName));
+        byte[] bytes = new byte[(int) selectedChunkSize];
+        System.out.println("fileName : " + fileName + " fileSize : " + fileSize + " selectedChunkSize : " + selectedChunkSize);
+        int count;
+        String confirmationMessage = "";
+        boolean error = false;
+        while ((count = fin.read(bytes)) > 0) {
+            uploadClient.getOutputStream().write(bytes);
+            System.out.println("sent a chunk of size : " + count);
+//            uploadClient.setSoTimeout(30000);
+            confirmationMessage = (String) inUpload.readObject();
+            System.out.println("server message : " + confirmationMessage);
+            if (!confirmationMessage.contains("successful")) {
+                error = true;
+                break;
             }
-
+        }
+        if (!error) {
+            outUpload.writeObject("transmission complete");
+            confirmationMessage = (String) inUpload.readObject();
+            System.out.println("server message : " + confirmationMessage);
+        } else {
+            System.out.println("server did not send confirmation");
+            outUpload.writeObject("unsuccessful");
+        }
+        uploadClient.close();
+        fin.close();
     }
 }
