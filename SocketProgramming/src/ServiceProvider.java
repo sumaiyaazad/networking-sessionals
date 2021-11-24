@@ -44,7 +44,7 @@ public class ServiceProvider extends Thread {
                     String lastArg = userCommand.split("-")[3];
                     String fileType = command.equals("response") ? "public" : lastArg;
                     String fileId = "src\\files\\" + id + "\\" + fileType + "\\" + fileName;
-                    int selectedChunkSize = 100;
+                    int selectedChunkSize = 60000;
 //                    int selectedChunkSize = ThreadLocalRandom.current().nextInt(Server.minSize, Server.maxSize + 1);
                     out.writeObject("parameter-" + fileName + "-" + fileSize + "-" + selectedChunkSize + "-" + id);
                     uploadFile(fileId, fileSize, selectedChunkSize);
@@ -137,12 +137,13 @@ public class ServiceProvider extends Thread {
 //            simulation timeout
 //            Thread.sleep(31000);
 //            break;
-            uploadSocket.getInputStream().read(bytes);
-            count += 1;
-            System.out.println("received chunk no : " + count );
-            outUpload.writeObject("successfully received chunk no : " + count);
-            fos.write(bytes);
-            System.out.println("wrote chunk no : " + count + " to file");
+            if(uploadSocket.getInputStream().read(bytes)>0){
+                count += 1;
+                System.out.println("received chunk no : " + count );
+                outUpload.writeObject("successfully received chunk no : " + count);
+                fos.write(bytes);
+                System.out.println("wrote chunk no : " + count + " to file");
+            };
         }
         String completionMessage = (String) inUpload.readObject();
         System.out.println("client message : " + completionMessage);

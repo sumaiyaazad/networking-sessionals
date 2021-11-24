@@ -11,8 +11,8 @@ public class Server {
     public static int currentBufferSize = 0;
 //    public static int minSize = 100;
 //    public static int maxSize = 400;
-    public static int minSize = 2000000;
-    public static int maxSize = 2500000;
+    public static int minSize = 10000;
+    public static int maxSize = 65000;
     public static ArrayList<ServiceProvider> threadArrayList=new ArrayList<>();
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket serverSocket = new ServerSocket(6666);
