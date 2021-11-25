@@ -54,7 +54,8 @@ public class Client {
             System.out.println("file download failure, try again later");
             return;
         }
-        byte[] bytes = new byte[(int) Server.bufferSize];
+        int bufferSize = Server.bufferSize>65500 ? 65500 : Server.bufferSize;
+        byte[] bytes = new byte[(int) bufferSize];
         FileOutputStream fos = new FileOutputStream("src\\downloads\\" + myId + "\\" + fileName);
         int numOfChunk = fileSize % Server.bufferSize == 0 ? (fileSize / Server.bufferSize) : (fileSize / Server.bufferSize + 1);
         int count = 0;
@@ -64,8 +65,10 @@ public class Client {
                 fos.write(bytes);
             }
         }
-        serverMessage = (String) in.readObject();
-        System.out.println("server message : " + serverMessage);
+//        System.out.println(count);
+//        serverMessage = (String) in.readObject();
+        System.out.println("file received");
+
         fos.close();
     }
 

@@ -119,7 +119,9 @@ public class ServiceProvider extends Thread {
         while (fin.read(bytes) > 0) {
             socket.getOutputStream().write(bytes);
         }
-        out.writeObject("file sent successfully");
+//        System.out.println(i);
+//        out.writeObject("file sent successfully");
+        System.out.println("file sent");
         fin.close();
     }
 
