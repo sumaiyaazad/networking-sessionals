@@ -28,8 +28,7 @@ public class Client {
                 String fileName = serverMessage.split("-")[1];
                 Integer fileSize = Integer.parseInt(serverMessage.split("-")[2]);
                 Integer selectedChunkSize = Integer.parseInt(serverMessage.split("-")[3]);
-                Integer id = Integer.parseInt(serverMessage.split("-")[4]);
-                uploadfile(fileName, fileSize, selectedChunkSize, id);
+                uploadfile(fileName, fileSize, selectedChunkSize);
             } else if (serverMessage.contains("download")) {
                 String myId = serverMessage.split("-")[1];
                 String fileName = serverMessage.split("-")[2];
@@ -56,25 +55,21 @@ public class Client {
             return;
         }
         byte[] bytes = new byte[(int) Server.bufferSize];
-//        System.out.println("do you want to download the folder in public or private directory?");
-//        String type = s.nextLine();
-        FileOutputStream fos = new FileOutputStream("src\\files\\" + myId + "\\public\\" + fileName);
+        FileOutputStream fos = new FileOutputStream("src\\downloads\\" + myId + "\\" + fileName);
         int numOfChunk = fileSize % Server.bufferSize == 0 ? (fileSize / Server.bufferSize) : (fileSize / Server.bufferSize + 1);
         int count = 0;
         while (count < numOfChunk) {
-            count += 1;
-            socket.getInputStream().read(bytes);
-            fos.write(bytes);
+            if(socket.getInputStream().read(bytes)>0){
+                count += 1;
+                fos.write(bytes);
+            }
         }
         serverMessage = (String) in.readObject();
         System.out.println("server message : " + serverMessage);
         fos.close();
     }
 
-    private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize, Integer id) throws IOException, ClassNotFoundException {
-        Socket uploadClient = new Socket("localhost", 8000 + id);
-        ObjectOutputStream outUpload = new ObjectOutputStream(uploadClient.getOutputStream());
-        ObjectInputStream inUpload = new ObjectInputStream(uploadClient.getInputStream());
+    private static void uploadfile(String fileName, Integer fileSize, Integer selectedChunkSize) throws IOException, ClassNotFoundException {
         FileInputStream fin = new FileInputStream(new File("src\\" + fileName));
         byte[] bytes = new byte[(int) selectedChunkSize];
         System.out.println("fileName : " + fileName + " fileSize : " + fileSize + " selectedChunkSize : " + selectedChunkSize);
@@ -82,25 +77,24 @@ public class Client {
         String confirmationMessage = "";
         boolean error = false;
         while ((count = fin.read(bytes)) > 0) {
-            uploadClient.getOutputStream().write(bytes);
-            System.out.println("sent a chunk of size : " + count);
+            socket.getOutputStream().write(bytes);
+//            System.out.println("sent a chunk of size : " + count);
 //            uploadClient.setSoTimeout(30000);
-            confirmationMessage = (String) inUpload.readObject();
-            System.out.println("server message : " + confirmationMessage);
+            confirmationMessage = (String) in.readObject();
+//            System.out.println("server message : " + confirmationMessage);
             if (!confirmationMessage.contains("successful")) {
                 error = true;
                 break;
             }
         }
         if (!error) {
-            outUpload.writeObject("transmission complete");
-            confirmationMessage = (String) inUpload.readObject();
+            out.writeObject("transmission complete");
+            confirmationMessage = (String) in.readObject();
             System.out.println("server message : " + confirmationMessage);
         } else {
             System.out.println("server did not send confirmation");
-            outUpload.writeObject("unsuccessful");
+            out.writeObject("unsuccessful");
         }
-        uploadClient.close();
         fin.close();
     }
 }

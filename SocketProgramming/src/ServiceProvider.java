@@ -43,10 +43,10 @@ public class ServiceProvider extends Thread {
                     //last arg for upload request is public or private and for response is request id
                     String lastArg = userCommand.split("-")[3];
                     String fileType = command.equals("response") ? "public" : lastArg;
-                    String fileId = "src\\files\\" + id + "\\" + fileType + "\\" + fileName;
-                    int selectedChunkSize = 60000;
+                    String fileId = "src\\uploads\\" + id + "\\" + fileType + "\\" + fileName;
+                    int selectedChunkSize = 100;
 //                    int selectedChunkSize = ThreadLocalRandom.current().nextInt(Server.minSize, Server.maxSize + 1);
-                    out.writeObject("parameter-" + fileName + "-" + fileSize + "-" + selectedChunkSize + "-" + id);
+                    out.writeObject("parameter-" + fileName + "-" + fileSize + "-" + selectedChunkSize );
                     uploadFile(fileId, fileSize, selectedChunkSize);
                     if (command.equals("response")) {
                         notifyRequestSender(lastArg, fileName);
@@ -54,14 +54,14 @@ public class ServiceProvider extends Thread {
                 } else if (userCommand.contains("download")) {
                     String studentId = userCommand.split("-")[1];
                     String fileName = userCommand.split("-")[2];
-                    String fileId = "src\\files\\" + studentId + "\\public\\" + fileName;
+                    String fileId = "src\\uploads\\" + studentId + "\\public\\" + fileName;
                     File file = new File(fileId);
                     if (!file.exists() || file.isDirectory()) {
                         out.writeObject("requested file does not exist");
                     } else {
                         Server.currentBufferSize += file.length();
                         out.writeObject("download-" + id + "-" + fileName + "-" + file.length());
-                        downloadFile(studentId, fileName, file);
+                        downloadFile(file);
                     }
                 } else if (userCommand.contains("request")) {
                     String description = userCommand.split("-")[1];
@@ -111,10 +111,11 @@ public class ServiceProvider extends Thread {
         }
     }
 
-    private void downloadFile(String studentId, String fileName, File file) throws IOException {
+    private void downloadFile( File file) throws IOException {
         out.writeObject("download will start in few seconds...");
         FileInputStream fin = new FileInputStream(file);
-        byte[] bytes = new byte[(int) Server.bufferSize];
+        int bufferSize = Server.bufferSize>65500 ? 65500 : Server.bufferSize;
+        byte[] bytes = new byte[(int) bufferSize];
         while (fin.read(bytes) > 0) {
             socket.getOutputStream().write(bytes);
         }
@@ -124,47 +125,39 @@ public class ServiceProvider extends Thread {
 
 
     private void uploadFile(String fileId, int fileSize, int selectedChunkSize) throws IOException, ClassNotFoundException, InterruptedException {
-        ServerSocket uploadServer = new ServerSocket(8000 + id);
-        Socket uploadSocket = uploadServer.accept();
-        ObjectOutputStream outUpload = new ObjectOutputStream(uploadSocket.getOutputStream());
-        ObjectInputStream inUpload = new ObjectInputStream(uploadSocket.getInputStream());
         FileOutputStream fos = new FileOutputStream(fileId);
         byte[] bytes = new byte[(int) selectedChunkSize];
         int numberOfChunk = (fileSize % selectedChunkSize == 0) ? (fileSize / selectedChunkSize) : (fileSize / selectedChunkSize + 1);
         System.out.println("fileId : " + fileId + " fileSize : " + fileSize + " selectedChunkSize : " + selectedChunkSize + " noOfChunk : " + numberOfChunk);
         int count = 0;
         while (count < numberOfChunk) {
-//            simulation timeout
-//            Thread.sleep(31000);
-//            break;
-            if(uploadSocket.getInputStream().read(bytes)>0){
+            if(socket.getInputStream().read(bytes)>0){
                 count += 1;
-                System.out.println("received chunk no : " + count );
-                outUpload.writeObject("successfully received chunk no : " + count);
+//                System.out.println("received chunk no : " + count );
+                out.writeObject("successfully received chunk no : " + count);
                 fos.write(bytes);
-                System.out.println("wrote chunk no : " + count + " to file");
+//                System.out.println("wrote chunk no : " + count + " to file");
             };
         }
-        String completionMessage = (String) inUpload.readObject();
-        System.out.println("client message : " + completionMessage);
+        String completionMessage = (String) in.readObject();
+//        System.out.println("client message : " + completionMessage);
         fos.close();
 //        simulation file delete
 //        count=0;
         if (!completionMessage.contains("complete") || count != numberOfChunk) {
             File file = new File(fileId);
             file.delete();
-            System.out.println("transmission failure, file deleted");
-            outUpload.writeObject("transmission cancelled");
+//            System.out.println("transmission failure, file deleted");
+            out.writeObject("transmission cancelled");
         } else {
-            outUpload.writeObject("transmission completed successfully");
+            out.writeObject("transmission completed successfully");
         }
         Server.currentBufferSize -= fileSize;
-        uploadSocket.close();
     }
 
     private void lookupOtherFiles() throws IOException {
         String otherPublicList;
-        if (Server.userArray.size() == 0) {
+        if (Server.userArray.size() == 1) {
             otherPublicList = "none uploaded public file \n";
         } else {
             otherPublicList = "other public file list : \n";
@@ -174,7 +167,7 @@ public class ServiceProvider extends Thread {
                 continue;
             }
 
-            File folder = new File("src\\files\\" + Server.userArray.get(i) + "\\public");
+            File folder = new File("src\\uploads\\" + Server.userArray.get(i) + "\\public");
             String[] listOfPublicFiles = folder.list();
             if (listOfPublicFiles.length != 0) {
                 otherPublicList += Server.userArray.get(i) + " public file list : \n";
@@ -188,21 +181,30 @@ public class ServiceProvider extends Thread {
 
     private void lookupOwnFiles() throws IOException {
         String fileList;
-        File publicFolder = new File("src\\files\\" + id + "\\public");
-        File privateFolder = new File("src\\files\\" + id + "\\private");
+        File publicFolder = new File("src\\uploads\\" + id + "\\public");
+        File privateFolder = new File("src\\uploads\\" + id + "\\private");
+        File downloadFolder = new File("src\\downloads\\"+id);
         String[] listOfPublicFiles = publicFolder.list();
         String[] listOfPrivateFiles = privateFolder.list();
+        String[] listOfDownloadedFiles = downloadFolder.list();
         if (listOfPrivateFiles.length == 0 && listOfPublicFiles.length == 0) {
             fileList = "you haven't uploaded any file\n";
         } else {
-            fileList = "own file list : \n";
+            fileList = "your uploaded file list : \n";
         }
-
         for (int i = 0; i < listOfPublicFiles.length; i++) {
             fileList += listOfPublicFiles[i] + " --> public \n";
         }
         for (int i = 0; i < listOfPrivateFiles.length; i++) {
             fileList += listOfPrivateFiles[i] + " --> private \n";
+        }
+        if (listOfDownloadedFiles.length == 0) {
+            fileList += "you haven't dwnloaded any file\n";
+        } else {
+            fileList += "your dwnloaded file list : \n";
+        }
+        for (int i = 0; i < listOfDownloadedFiles.length; i++) {
+            fileList += listOfDownloadedFiles[i] + " --> public \n";
         }
         out.writeObject(fileList);
     }
@@ -230,11 +232,6 @@ public class ServiceProvider extends Thread {
     }
 
     private boolean login() throws IOException, ClassNotFoundException {
-
-        //reads user id and checks whether a current user is trying to establish a connection
-        //if inactive user tries to establish a connection, then add that user to currentUserArray
-        //if anew user tries to establish a connection add that user to currentUserArray and userArray
-
         out.writeObject("login ID :");
         String sUserId = (String) in.readObject();
         Integer userId = Integer.parseInt(sUserId);
@@ -253,9 +250,10 @@ public class ServiceProvider extends Thread {
             Server.currentUserArray.add(userId);
             Server.userArray.add(userId);
             id = userId;
-            new File("src\\files\\" + sUserId).mkdir();
-            new File("src\\files\\" + sUserId + "\\public").mkdir();
-            new File("src\\files\\" + sUserId + "\\private").mkdir();
+            new File("src\\uploads\\" + sUserId).mkdir();
+            new File("src\\downloads\\" + sUserId).mkdir();
+            new File("src\\uploads\\" + sUserId + "\\public").mkdir();
+            new File("src\\uploads\\" + sUserId + "\\private").mkdir();
             return true;
         }
 

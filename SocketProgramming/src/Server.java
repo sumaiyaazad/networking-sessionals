@@ -6,13 +6,10 @@ import java.util.ArrayList;
 public class Server {
     public static ArrayList<Integer> userArray= new ArrayList<>();
     public static ArrayList<Integer> currentUserArray= new ArrayList<>();
-//    public static int bufferSize = 1000;
-    public static int bufferSize = 10000;
+    public static int bufferSize = 65500;
     public static int currentBufferSize = 0;
-//    public static int minSize = 100;
-//    public static int maxSize = 400;
     public static int minSize = 10000;
-    public static int maxSize = 65000;
+    public static int maxSize = 60000;
     public static ArrayList<ServiceProvider> threadArrayList=new ArrayList<>();
     public static void main(String[] args) throws IOException, ClassNotFoundException {
         ServerSocket serverSocket = new ServerSocket(6666);
